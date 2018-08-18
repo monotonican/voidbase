@@ -50,8 +50,14 @@ class Api::MessagesController < ApplicationController
 
   def add_message
     @message_json = JSON.parse(params[:message], :symbolize_names => true)
-    Account.find_by(pubkey: @message_json[:author]).update(seq: @message_json[:seq], previous: @message_json[:key])
-    @message = Message.create(@message_json)
+    @message = Message.find_by(key: @message_json[:key])
+    account = Account.find_by(pubkey: @message_json[:author])
+
+    if !@message
+      @message = Message.create(@message_json)
+      account.update(seq: @message_json[:seq], previous: @message_json[:key])
+    end
+
     render template: '/api/message'
   end
 
