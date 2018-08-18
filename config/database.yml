@@ -1,0 +1,26 @@
+development:
+  adapter: postgresql
+  encoding: unicode
+  username: postgres
+  password: <%= ENV['POSTGRES_ENV_POSTGRES_PASSWORD'] %>
+  database: <%= ENV['PARTICLE_DATABASE_NAME'] %>
+  host: <%= ENV['POSTGRES_PORT_5432_TCP_ADDR'] %>
+  pool: 5
+
+test:
+  adapter: postgresql
+  encoding: unicode
+  username: postgres
+  password: <%= ENV['POSTGRES_ENV_POSTGRES_PASSWORD'] %>
+  database: <%= ENV['PARTICLE_DATABASE_NAME_TEST'] %>
+  host: <%= ENV['POSTGRES_PORT_5432_TCP_ADDR'] %>
+  pool: 5
+
+production:
+  adapter: postgresql
+  encoding: unicode
+  username: postgres
+  password: <%= ENV['POSTGRES_ENV_POSTGRES_PASSWORD'] %>
+  database: <%= ENV['PARTICLE_DATABASE_NAME'] %>
+  host: <%= ENV['POSTGRES_PORT_5432_TCP_ADDR'] %>
+  pool: 5
