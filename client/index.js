@@ -206,8 +206,7 @@ function make(keys, type, content, timestamp, state) {
   let sha3Encoded = sha3(encoded)
   let signEncoded = signData(sha3Encoded, keys)
 
-  let roots = state.roots
-  let gen = new MerkleGenerator(roots)
+  let gen = new MerkleGenerator(state.roots)
   gen.next(encoded)
   let signroots = signData(sha3(gen.roots.map(x => x.hash)), keys)
   // console.log('input', signroots, (gen.roots.map(x => x.hash)), )
@@ -220,7 +219,7 @@ function make(keys, type, content, timestamp, state) {
     content: msg_data,
     key: ('0x' + sha3Encoded.toString('hex')),
     sig: signEncoded,
-    proof: proof.map(x => { return {hash: '0x' + x.hash.toString('hex'), index: x.index} } ),
+    proof: proof, // map(x => { return {hash: '0x' + x.hash.toString('hex'), index: x.index} } ),
     roots: gen.roots.map(x => { return {hash: '0x' + x.hash.toString('hex'), index: x.index} } ),
     signroots: signroots,
   }
@@ -259,9 +258,16 @@ function check(msg) {
   ]
   let encoded = rlp.encode(payload)
   let sha3Encoded = sha3(encoded)
-  let roots = msg.roots.map(x => new Buffer(x.hash.slice(2), 'hex'))
-  let signroots = verifyData(sha3(roots), msg.signroots, author)
-  // console.log('outputs', msg.roots, signroots)
+
+  console.log('proof')
+  console.log(msg.proof)
+  let gen = new MerkleGenerator(msg.proof)
+  gen.next(encoded)
+  console.log('here', gen.roots)
+
+  // let roots = msg.roots.map(x => new Buffer(x.hash.slice(2), 'hex'))
+  let signroots = verifyData(sha3(gen.roots.map(x => x.hash)), msg.signroots, author)
+  console.log('outputs', signroots)
 
   return verifyData(sha3Encoded, msg.sig, author)
 }

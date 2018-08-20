@@ -48,7 +48,7 @@ console.log('result3', result)
 //   timer += 10000
 // }
 
-console.log(check(msgs[0]))
+console.log(check(msgs[2]))
 
 
 
