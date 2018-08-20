@@ -31,13 +31,13 @@ timer += 10000
 
 console.log('result1', result)
 
-result = make(keypair, 'post', {text: 'hello'}, timer, state)
+result = make(keypair, 'post', {text: 'hello'}, timer, result)
 msgs.push(result)
 timer += 10000
 
 console.log('result2', result)
 
-result = make(keypair, 'post', {text: 'hello'}, timer, state)
+result = make(keypair, 'post', {text: 'hello'}, timer, result)
 msgs.push(result)
 timer += 10000
 

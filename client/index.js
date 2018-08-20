@@ -7,7 +7,7 @@ const flat = require('flat-tree')
 function MerkleGenerator (roots) {
   if (!(this instanceof MerkleGenerator)) return new MerkleGenerator(roots)
 
-  this.roots = roots || []
+  this.roots = roots && roots.map(x => { return { index: x.index, hash: new Buffer(x.hash.slice(2), 'hex') } }) || []
   this.blocks = this.roots.length ? 1 + flat.rightSpan(this.roots[this.roots.length - 1].index) / 2 : 0
   this.blockdata = []
 
@@ -172,6 +172,7 @@ function make(keys, type, content, timestamp, state) {
   let author = keys.getAddress()
   let payload = []
   let msg_data = {}
+  let proof = state.roots
   let msgschema = schema[type]
   if (!msgschema) return null
 
@@ -219,6 +220,7 @@ function make(keys, type, content, timestamp, state) {
     content: msg_data,
     key: ('0x' + sha3Encoded.toString('hex')),
     sig: signEncoded,
+    proof: proof.map(x => { return {hash: '0x' + x.hash.toString('hex'), index: x.index} } ),
     roots: gen.roots.map(x => { return {hash: '0x' + x.hash.toString('hex'), index: x.index} } ),
     signroots: signroots,
   }
