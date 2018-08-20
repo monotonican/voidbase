@@ -24,13 +24,30 @@ let result = null
 
 let msgs = []
 
-for (var i = 0; i < 1; i++) {
-  result = make(keypair, 'post', {text: 'hello ' + (i + 1)}, result && result.seq || 0, result && result.key, timer)
-  msgs.push(result)
-  timer += 10000
-}
+let state = { seq: result && result.seq || 0, roots: [] }
+result = make(keypair, 'post', {text: 'hello'}, timer, state)
+msgs.push(result)
+timer += 10000
 
-console.log(msgs)
+console.log('result1', result)
+
+result = make(keypair, 'post', {text: 'hello'}, timer, state)
+msgs.push(result)
+timer += 10000
+
+console.log('result2', result)
+
+result = make(keypair, 'post', {text: 'hello'}, timer, state)
+msgs.push(result)
+timer += 10000
+
+console.log('result3', result)
+
+// for (var i = 0; i < 1; i++) {
+//   msgs.push(result)
+//   timer += 10000
+// }
+
 console.log(check(msgs[0]))
 
 

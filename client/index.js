@@ -1,6 +1,71 @@
 const ewallet = require('ethereumjs-wallet')
 const eutil = require('ethereumjs-util')
 const rlp = require('rlp')
+const flat = require('flat-tree')
+
+
+function MerkleGenerator (roots) {
+  if (!(this instanceof MerkleGenerator)) return new MerkleGenerator(roots)
+
+  this.roots = roots || []
+  this.blocks = this.roots.length ? 1 + flat.rightSpan(this.roots[this.roots.length - 1].index) / 2 : 0
+  this.blockdata = []
+
+
+  for (var i = 0; i < this.roots.length; i++) {
+    var r = this.roots[i]
+    if (r && !r.parent) r.parent = flat.parent(r.index)
+  }
+
+  this._leaf = function (leaf, roots) {
+    return sha3(leaf.data)
+  }
+  this._parent = function (a, b) {
+    return sha3([a.hash, b.hash])
+  }
+}
+
+MerkleGenerator.prototype.next = function (data, nodes) {
+  if (!Buffer.isBuffer(data)) data = new Buffer(data)
+  if (!nodes) nodes = []
+
+  var index = 2 * this.blocks++
+
+  var leaf = {
+    index: index,
+    parent: flat.parent(index),
+    hash: null,
+    size: data.length,
+    data: data
+  }
+
+  leaf.hash = this._leaf(leaf, this.roots)
+  this.roots.push(leaf)
+  // nodes.push(leaf)
+
+  this.blockdata[leaf.index] = leaf
+
+  while (this.roots.length > 1) {
+    var left = this.roots[this.roots.length - 2]
+    var right = this.roots[this.roots.length - 1]
+
+    if (left.parent !== right.parent) break
+
+    this.roots.pop()
+    this.roots[this.roots.length - 1] = leaf = {
+      index: left.parent,
+      parent: flat.parent(left.parent),
+      hash: this._parent(left, right),
+      size: left.size + right.size,
+      data: null
+    }
+    // nodes.push(leaf)
+  }
+
+  this.blockdata[leaf.index] = leaf
+
+  return nodes
+}
 
 const schema = {
   'post': [
@@ -82,7 +147,11 @@ function generateKey(key) {
 }
 
 function sha3(data) {
-  return eutil.sha3(data)
+  if (Array.isArray(data)) {
+    return eutil.sha3(Buffer.concat(data))
+  } else {
+    return eutil.sha3(data)
+  }
 }
 
 function signData(data, keypair) {
@@ -93,13 +162,13 @@ function signData(data, keypair) {
 function verifyData(data, signed, author) {
   signed = splitSig(signed)
   let recovered = eutil.pubToAddress(eutil.ecrecover(data, signed.v, signed.r, signed.s))
-  console.log(recovered.toString('hex'))
-  console.log(author.toString('hex'))
+  // console.log(recovered.toString('hex'))
+  // console.log(author.toString('hex'))
   return recovered.toString('hex') === author.toString('hex')
 }
 
 
-function make(keys, type, content, seq, previous, timestamp) {
+function make(keys, type, content, timestamp, state) {
   let author = keys.getAddress()
   let payload = []
   let msg_data = {}
@@ -124,28 +193,36 @@ function make(keys, type, content, seq, previous, timestamp) {
     }
   }
 
+  payload = rlp.encode(payload)
   payload = [
     ["msgtype", type],
     ["author", author],
-    ["seq", (seq + 1)],
+    ["seq", (state.seq + 1)],
     ["timestamp", timestamp],
     ["content", sha3(payload)]
   ]
-  console.log('payload', payload)
   let encoded = rlp.encode(payload)
   let sha3Encoded = sha3(encoded)
   let signEncoded = signData(sha3Encoded, keys)
 
+  let roots = state.roots
+  let gen = new MerkleGenerator(roots)
+  gen.next(encoded)
+  let signroots = signData(sha3(gen.roots.map(x => x.hash)), keys)
+  // console.log('input', signroots, (gen.roots.map(x => x.hash)), )
+
   let msg = {
     msgtype: type,
     author: ('0x' + author.toString('hex')),
-    seq: (seq + 1),
-    previous: previous,
+    seq: (state.seq + 1),
     timestamp: timestamp,
     content: msg_data,
     key: ('0x' + sha3Encoded.toString('hex')),
     sig: signEncoded,
+    roots: gen.roots.map(x => { return {hash: '0x' + x.hash.toString('hex'), index: x.index} } ),
+    signroots: signroots,
   }
+  // console.log(msg)
   return msg
 }
 
@@ -170,6 +247,7 @@ function check(msg) {
     }
   }
 
+  payload = rlp.encode(payload)
   payload = [
     ["msgtype", msg.msgtype],
     ["author", hexdecode(msg.author)],
@@ -177,9 +255,12 @@ function check(msg) {
     ["timestamp", msg.timestamp],
     ["content", sha3(payload)]
   ]
-  console.log('payload', payload)
   let encoded = rlp.encode(payload)
   let sha3Encoded = sha3(encoded)
+  let roots = msg.roots.map(x => new Buffer(x.hash.slice(2), 'hex'))
+  let signroots = verifyData(sha3(roots), msg.signroots, author)
+  // console.log('outputs', msg.roots, signroots)
+
   return verifyData(sha3Encoded, msg.sig, author)
 }
 
