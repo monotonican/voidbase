@@ -49,10 +49,18 @@ function concatSig(signed) {
   return eutil.addHexPrefix(rStr.concat(sStr, vStr)).toString('hex')
 }
 
-function splitSig(data) {
+function splitSigForContract(data) {
   var val = data.slice(2)
   var r = `0x${val.slice(0, 64)}`
   var s = `0x${val.slice(64, 128)}`
+  var v = parseInt(val.slice(128, 130),16)
+  return {r ,s, v}
+}
+
+function splitSig(data) {
+  var val = data.slice(2)
+  var r = new Buffer(val.slice(0, 64), 'hex')
+  var s = new Buffer(val.slice(64, 128), 'hex')
   var v = parseInt(val.slice(128, 130),16)
   return {r ,s, v}
 }
@@ -78,12 +86,15 @@ function sha3(data) {
 }
 
 function signData(data, keypair) {
+  let signed = eutil.ecsign(data, keypair.getPrivateKey())
   return concatSig(eutil.ecsign(data, keypair.getPrivateKey()))
 }
 
 function verifyData(data, signed, author) {
   signed = splitSig(signed)
   let recovered = eutil.pubToAddress(eutil.ecrecover(data, signed.v, signed.r, signed.s))
+  console.log(recovered.toString('hex'))
+  console.log(author.toString('hex'))
   return recovered.toString('hex') === author.toString('hex')
 }
 
@@ -117,17 +128,13 @@ function make(keys, type, content, seq, previous, timestamp) {
     ["msgtype", type],
     ["author", author],
     ["seq", (seq + 1)],
-    ["previous", previous],
     ["timestamp", timestamp],
     ["content", sha3(payload)]
   ]
+  console.log('payload', payload)
   let encoded = rlp.encode(payload)
   let sha3Encoded = sha3(encoded)
   let signEncoded = signData(sha3Encoded, keys)
-
-  // console.log('payload encoded', encoded.toString('hex'))
-  // console.log('payload sig', signEncoded)
-  
 
   let msg = {
     msgtype: type,
@@ -144,9 +151,8 @@ function make(keys, type, content, seq, previous, timestamp) {
 
 function check(msg) {
   let author = hexdecode(msg.author)
-  console.log('author', author)
   let payload = []
-  let msgschema = schema[msg.type]
+  let msgschema = schema[msg.msgtype]
   if (!msgschema) return false
 
   for(item of msgschema) {
@@ -165,17 +171,15 @@ function check(msg) {
   }
 
   payload = [
-    ["msgtype", msg.type],
+    ["msgtype", msg.msgtype],
     ["author", hexdecode(msg.author)],
     ["seq", msg.seq],
-    ["previous", msg.previous],
     ["timestamp", msg.timestamp],
     ["content", sha3(payload)]
   ]
   console.log('payload', payload)
   let encoded = rlp.encode(payload)
   let sha3Encoded = sha3(encoded)
-  // console.log('sha3', sha3Encoded)
   return verifyData(sha3Encoded, msg.sig, author)
 }
 

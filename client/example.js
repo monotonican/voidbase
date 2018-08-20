@@ -14,7 +14,7 @@ function hexencode(data) {
   return '0x' + data.toString('hex')
 }
 
-let alice = 'c408fd08e280181e331f8c05ce5f7210f9a5a45220c44cbd5f9c8052a14ac21c'
+let alice = 'c408fd08e280181e331f8c05ce5f7210f9a5a45220c44cbd5f9c8052a14ac21c' // '4e64a753b3cb46888fc85845d61de1bfa4300e60'
 let bob = '7f63caf88965e56f87f3aeaaf5a221a69fdea0bc14c76b3879e6679748fddcad'
 let caddy = '6d0c55f6b69c5b2fd80f8e6468f2c7e92a03de9ab1a49cdadbed4fb09e711ac8'
 
@@ -24,11 +24,16 @@ let result = null
 
 let msgs = []
 
-for (var i = 0; i < 10; i++) {
+for (var i = 0; i < 1; i++) {
   result = make(keypair, 'post', {text: 'hello ' + (i + 1)}, result && result.seq || 0, result && result.key, timer)
   msgs.push(result)
   timer += 10000
 }
+
+console.log(msgs)
+console.log(check(msgs[0]))
+
+
 
 
 const baseurl = 'http://localhost:3000'
@@ -69,7 +74,8 @@ async function testAddMessage() {
 }
 
 async function testMain() {
-  testAddMessage()
+  // testFetchAddress()
+  // testAddMessage()
 }
 
 testMain()
