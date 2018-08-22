@@ -40,7 +40,6 @@ MerkleGenerator.prototype.next = function (hash, nodes) {
     index: index,
     parent: flat.parent(index),
     hash: hash,
-    data: null
   }
 
   leaf.hash = this._leaf(leaf, this.roots)
@@ -60,7 +59,6 @@ MerkleGenerator.prototype.next = function (hash, nodes) {
       index: left.parent,
       parent: flat.parent(left.parent),
       hash: this._parent(left, right),
-      data: null
     }
     // nodes.push(leaf)
   }
@@ -213,10 +211,9 @@ function make(keys, type, content, timestamp, state) {
   let sha3Encoded = sha3(encoded)
   let signEncoded = signData(sha3Encoded, keys)
 
-  let gen = new MerkleGenerator(state.roots)
+  let gen = new MerkleGenerator(proof.map(x => { return {index: x.index, hash: hexdecode(x.hash)} }))
   gen.next(sha3Encoded)
   let signroots = signData(sha3(gen.roots.map(x => x.hash)), keys)
-  // console.log('input', signroots, (gen.roots.map(x => x.hash)), )
 
   let msg = {
     msgtype: type,
@@ -225,12 +222,10 @@ function make(keys, type, content, timestamp, state) {
     timestamp: timestamp,
     content: msg_data,
     key: hexencode(sha3Encoded),
-    sig: signEncoded,
-    proof: proof, // map(x => { return {hash: '0x' + x.hash.toString('hex'), index: x.index} } ),
-    roots: gen.roots.map(x => { return {hash: hexencode(x.hash), index: x.index} } ),
+    proof: proof,
+    roots: gen.roots.map(x => { return {index: x.index, hash: hexencode(x.hash)} }),
     signroots: signroots,
   }
-  // console.log(msg)
   return msg
 }
 
@@ -266,16 +261,11 @@ function check(msg) {
   let encoded = rlp.encode(payload)
   let sha3Encoded = sha3(encoded)
 
-  console.log('proof')
-  console.log(msg.proof)
   let gen = new MerkleGenerator(msg.proof)
   gen.next(sha3Encoded)
-  console.log('here', gen.roots)
 
-  let signroots = verifyData(sha3(gen.roots.map(x => x.hash)), msg.signroots, author)
-  console.log('outputs', signroots)
-
-  return verifyData(sha3Encoded, msg.sig, author)
+  let checksign = verifyData(sha3(gen.roots.map(x => x.hash)), msg.signroots, author)
+  return checksign
 }
 
 exports.check = check

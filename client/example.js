@@ -52,6 +52,36 @@ console.log(check(msgs[2]))
 
 
 
+// var blocks = ['hello', 'world', 'very', 'cool', 'happy', 'birth', 'day', 'like', 'the', 'day']
+// for (var i = 0; i < blocks.length; i++) {
+//   gen.next(blocks[i])
+// }
+
+// console.log('roots', gen.roots)
+// console.log('hashed', hasharray(gen.roots))
+// console.log()
+
+// let target = 3 * 2
+// let roots = gen.roots
+// let pos = roots.findIndex(x => flat.leftChild(x.index) <= target && flat.rightChild(x.index) >= target)
+// console.log('pos', pos)
+
+
+// function buildproof(target, root) {
+//   let stack = []
+//   let sibling
+//   stack.push(target)
+//   while (target < root) {
+//     stack.push(flat.sibling(target))
+//     target = flat.parent(target)
+//   }
+//   return stack
+// }
+
+// console.log(buildproof(target, roots[pos].index))
+
+
+
 
 const baseurl = 'http://localhost:3000'
 
