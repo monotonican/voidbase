@@ -18,15 +18,20 @@ function MerkleGenerator (roots) {
   }
 
   this._leaf = function (leaf, roots) {
-    return sha3(leaf.data)
+    return leaf.hash ? leaf.hash : sha3(leaf.data)
   }
   this._parent = function (a, b) {
-    return sha3([a.hash, b.hash])
+    // console.log('compare', a.hash.compare(b.hash))
+    if (a.hash.compare(b.hash) < 0) {
+      return sha3([a.hash, b.hash])
+    } else {
+      return sha3([b.hash, a.hash])
+    }
   }
 }
 
-MerkleGenerator.prototype.next = function (data, nodes) {
-  if (!Buffer.isBuffer(data)) data = new Buffer(data)
+MerkleGenerator.prototype.next = function (hash, nodes) {
+  if (!Buffer.isBuffer(hash)) hash = new Buffer(hash)
   if (!nodes) nodes = []
 
   var index = 2 * this.blocks++
@@ -34,9 +39,8 @@ MerkleGenerator.prototype.next = function (data, nodes) {
   var leaf = {
     index: index,
     parent: flat.parent(index),
-    hash: null,
-    size: data.length,
-    data: data
+    hash: hash,
+    data: null
   }
 
   leaf.hash = this._leaf(leaf, this.roots)
@@ -56,7 +60,6 @@ MerkleGenerator.prototype.next = function (data, nodes) {
       index: left.parent,
       parent: flat.parent(left.parent),
       hash: this._parent(left, right),
-      size: left.size + right.size,
       data: null
     }
     // nodes.push(leaf)
@@ -99,6 +102,10 @@ const schema = {
 
 function hexdecode(data) {
   return new Buffer(data.slice(2), 'hex')
+}
+
+function hexencode(data) {
+  return '0x' + data.toString('hex')
 }
 
 function concatSig(signed) {
@@ -207,20 +214,20 @@ function make(keys, type, content, timestamp, state) {
   let signEncoded = signData(sha3Encoded, keys)
 
   let gen = new MerkleGenerator(state.roots)
-  gen.next(encoded)
+  gen.next(sha3Encoded)
   let signroots = signData(sha3(gen.roots.map(x => x.hash)), keys)
   // console.log('input', signroots, (gen.roots.map(x => x.hash)), )
 
   let msg = {
     msgtype: type,
-    author: ('0x' + author.toString('hex')),
+    author: hexencode(author),
     seq: (state.seq + 1),
     timestamp: timestamp,
     content: msg_data,
-    key: ('0x' + sha3Encoded.toString('hex')),
+    key: hexencode(sha3Encoded),
     sig: signEncoded,
     proof: proof, // map(x => { return {hash: '0x' + x.hash.toString('hex'), index: x.index} } ),
-    roots: gen.roots.map(x => { return {hash: '0x' + x.hash.toString('hex'), index: x.index} } ),
+    roots: gen.roots.map(x => { return {hash: hexencode(x.hash), index: x.index} } ),
     signroots: signroots,
   }
   // console.log(msg)
@@ -262,10 +269,9 @@ function check(msg) {
   console.log('proof')
   console.log(msg.proof)
   let gen = new MerkleGenerator(msg.proof)
-  gen.next(encoded)
+  gen.next(sha3Encoded)
   console.log('here', gen.roots)
 
-  // let roots = msg.roots.map(x => new Buffer(x.hash.slice(2), 'hex'))
   let signroots = verifyData(sha3(gen.roots.map(x => x.hash)), msg.signroots, author)
   console.log('outputs', signroots)
 
